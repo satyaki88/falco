@@ -1,56 +1,75 @@
 # Falco Helm Charts
+3 main areas for Falco:
+Events (introduced by Kernel, SysCalls interceptions, ..)
+Powerful Rules Engine where the stream of events is asserted
+And Alerts are triggered when a rule is violated
 
-This GitHub project is the source for our [Helm chart repository](https://v3.helm.sh/docs/topics/chart_repository/).
+![image](https://user-images.githubusercontent.com/24285128/230738454-b059681b-39ff-440f-9ce2-e28b0ccd62f4.png)
 
-The purpose of this repository is to provide a place for maintaining and contributing Charts related to the Falco project, with CI processes in place for managing the releasing of Charts into [our Helm Chart Repository]((https://falcosecurity.github.io/charts)).
+# Falco Rules
+  Falco is all based on rules. Example rules could be:
 
-For more information about installing and using Helm, see the
-[Helm Docs](https://helm.sh/docs/).
+1.   Installation of packages, libraries inside any container
+2.   Creation, deletion, rename and modification of files and folders inside the container after it starts running
+3.   Execution of binaries like bash, ssh, docker binary, debian binaries, vpn client, mail binaries
+4.   Unusual outbound traffic
+5.   Any ssh connection to/from container
+6.   Change of container files from host machine
+7.   Detect an attempt to start a pod with a container image outside of a list of allowed images.
+8.   Detect an attempt to start a pod with a privileged container
+9.   Attempt to attach/exec to a pod
+10.   Creation of new namespace etc.
+11.  Write Below root
 
-## Repository Structure
+![image](https://user-images.githubusercontent.com/24285128/230739391-f6ff01f8-82e5-4ebe-8aa6-7935629e8643.png)
 
-This GitHub repository contains the source for the packaged and versioned charts released to [https://falcosecurity.github.io/charts](https://falcosecurity.github.io/charts) (our Helm Chart Repository).
 
-The Charts in this repository are organized into folders: each directory that contains a `Chart.yaml` is a chart.
-
-The Charts in the `master` branch (with a corresponding [GitHub release](https://github.com/falcosecurity/charts/releases)) match the latest packaged Charts in [our Helm Chart Repository]((https://falcosecurity.github.io/charts)), though there may be previous versions of a Chart available in that Chart Repository.
-
-## Charts
-
-Charts currently available are listed below.
-
-- [falco](falco)
-- [falco-exporter](falco-exporter)
-- [falcosidekick](falcosidekick)
-- [event-generator](event-generator)
-
-## Usage
-
-### Adding `falcosecurity` repository
-
-Before installing any chart provided by this repository, add the `falcosecurity` Charts Repository:
-
-```bash
-helm repo add falcosecurity https://falcosecurity.github.io/charts
-helm repo update
+# 1.Deployment
 ```
+   helm install falco falco/  -n falco --set falcosidekick.enabled=true --set falcosidekick.webui.enabled=true
+```
+# 2.Verification
 
-### Installing a chart
+  a. Falco has a webserver that captures K8S events
+  ```
+    kubectl exec -it "$container" -- curl -s localhost:8765/healthz; echo
+  ```
+  b. Check with source of events is configured
+  ```
+  $ kubectl logs -n falco -l "app.kubernetes.io/name=falco" -c falco-driver-loader --tail=-1 | grep "* Running falco-driver-loader with"
+  ```
+  ### Output for kernel module
+  * Running falco-driver-loader with: driver=module, compile=yes, download=yes
+  * Running falco-driver-loader with: driver=module, compile=yes, download=yes
 
-Please refer to the instruction provided by the Chart you want to install. For installing Falco via Helm, the documentation is [here](https://github.com/falcosecurity/charts/tree/master/falco#adding-falcosecurity-repository).
+  ### Output for eBPF
+  * Running falco-driver-loader with: driver=bpf, compile=yes, download=yes
+  * Running falco-driver-loader with: driver=bpf, compile=yes, download=yes
 
-## Contributing
+# 3.Confirm the driver is properly installed
+```
+  $ kubectl logs -n falco -l "app.kubernetes.io/name=falco" -c falco-driver-loader --tail=-1 | grep -A 5 "* Success"
+```
+# 4.Trigger one of the Falco rules
+```
+  $ export POD_NAME=$(kubectl get pods --namespace falco -l "app.kubernetes.io/name=falco" -o jsonpath="{.items[0].metadata.name}")
+  $ kubectl -n falco exec ${POD_NAME} -- find /root -name "id_rsa"
+```
+  ### Check that Falco correctly intercepted the potentially dangerous command:
+```
+  $ kubectl logs -n falco -l "app.kubernetes.io/name=falco" | grep Warning
+```
+# 5. Event-generator
+  If you’d like to check if Falco is working properly, we have the event-generator tool that can perform an activity for both our syscall and k8s audit   related rules.
+  ```
+  helm install event-generator event-generator -f event-generator/values.yaml --namespace event-generator
+  ```
+  
+ # 6.Falco UI
+ We have falcosidekick ui service which is clusterIP. You can change it to Nodeport or LoadBalancer to access it from outside the cluster
+  ```
+  kubectl -n falco port-forward service/falco-falcosidekick-ui 2802:2802
+  ```
+  ![image](https://user-images.githubusercontent.com/24285128/230738999-6da7ca77-a24b-4369-8b89-25fc5d0f933d.png)
 
-We are glad to receive your contributions. To help you in the process, we have prepared a [CONTRIBUTING.md](https://github.com/falcosecurity/.github/blob/master/CONTRIBUTING.md), which includes detailed information on contributing to `falcosecurity` projects. Furthermore, we implemented a mechanism to automatically release and publish our charts whenever a PR is merged (if you are curious how this process works, you can find more details in our [release.md](release.md)).
-
-So, we ask you to follow these simple steps when making your PR:
-
-- The [DCO](https://github.com/falcosecurity/.github/blob/master/CONTRIBUTING.md#developer-certificate-of-origin) is required to contribute to a `falcosecurity` project. So ensure that all your commits have been signed off. We will not be able to merge the PR if a commit is not signed off.
-- Bump the version number of the chart by modifying the `version` value in the chart's `Chart.yaml` file. This is particularly important, as it allows our CI to release a new chart version. If the version has not been increased, we will not be able to merge the PR.
-- Add a new section in the chart's `CHANGELOG.md` file with the new version number of the chart.
-- If your changes affect any chart variables, please update the chart's `README.md` file accordingly and run `make docs` in the chart folder.
-
-Finally, when opening your PR, please fill in the provided PR template, including the final checklist of items to indicate that all the steps above have been performed. 
-
-
-If you have any questions, please feel free to contact us via [GitHub issues](https://github.com/falcosecurity/charts/issues).
+ 
