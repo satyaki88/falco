@@ -6,8 +6,8 @@ And Alerts are triggered when a rule is violated
 
 ![image](https://user-images.githubusercontent.com/24285128/230738454-b059681b-39ff-440f-9ce2-e28b0ccd62f4.png)
 
-# Falco Rules
-  Falco is all based on rules. Example rules could be:
+# Falco Rules ( Complete list here https://github.com/falcosecurity/rules/blob/main/rules_inventory/rules_overview.md)
+  Falco is all based on rules. Example rules could be: 
 
 1.   Installation of packages, libraries inside any container
 2.   Creation, deletion, rename and modification of files and folders inside the container after it starts running
