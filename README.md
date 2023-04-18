@@ -57,7 +57,7 @@ And Alerts are triggered when a rule is violated
 ```
   ### Check that Falco correctly intercepted the potentially dangerous command:
 ```
-  $ kubectl logs -n falco -l "app.kubernetes.io/name=falco" | grep Warning
+  $ kubectl logs -n falco -c falco -l "app.kubernetes.io/name=falco" | grep Warning
 ```
 # 5. Event-generator
   If you’d like to check if Falco is working properly, we have the event-generator tool that can perform an activity for both our syscall and k8s audit   related rules.
