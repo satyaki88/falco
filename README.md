@@ -53,7 +53,7 @@ And Alerts are triggered when a rule is violated
 # 4.Trigger one of the Falco rules
 ```
   $ export POD_NAME=$(kubectl get pods --namespace falco -l "app.kubernetes.io/name=falco" -o jsonpath="{.items[0].metadata.name}")
-  $ kubectl -n falco exec ${POD_NAME} -- find /root -name "id_rsa"
+  $ kubectl -n falco exec ${POD_NAME} -c falco  -- find /root -name "id_rsa"
 ```
   ### Check that Falco correctly intercepted the potentially dangerous command:
 ```
